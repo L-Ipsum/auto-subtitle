@@ -1,0 +1,19 @@
+[project]
+name = "auto-subtitle"
+version = "0.1.0"
+description = "Automatically generate and overlay subtitles for any video or voice over of a video."
+authors = [
+    {name = "L-Ipsum",email = "93914894+L-Ipsum@users.noreply.github.com"}
+]
+license = {text = "MIT License"}
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "openai-whisper (>=20240930,<20240931)",
+    "ffmpeg (>=1.4,<2.0)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"

@@ -1,4 +1,4 @@
-import os
+from pathlib import Path
 from typing import Iterator, TextIO
 
 
@@ -9,8 +9,7 @@ def str2bool(string):
     if string in str2val:
         return str2val[string]
     else:
-        raise ValueError(
-            f"Expected one of {set(str2val.keys())}, got {string}")
+        raise ValueError(f"Expected one of {set(str2val.keys())}, got {string}")
 
 
 def format_timestamp(seconds: float, always_include_hours: bool = False):
@@ -43,4 +42,4 @@ def write_srt(transcript: Iterator[dict], file: TextIO):
 
 
 def filename(path):
-    return os.path.splitext(os.path.basename(path))[0]
+    return Path(path).stem
