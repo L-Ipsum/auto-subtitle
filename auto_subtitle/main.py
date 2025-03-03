@@ -1,19 +1,31 @@
 import argparse
+import logging
 import os
 import warnings
+from pathlib import Path
+from typing import Any
 
 import ffmpeg
+import language_choices
 import whisper
 from cli import get_audio, get_subtitles
+from logging_setup import setup_logger
 from utils import filename, str2bool
 
 
-def main():
+def main() -> None:
+    setup_logger()
+
+    logger: logging.Logger = logging.getLogger(__name__)  # noqa: F841
+
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
     parser.add_argument(
-        "video", nargs="+", type=str, help="paths to video files to transcribe"
+        "video",
+        nargs="+",
+        type=str,
+        help="paths to video files to transcribe",
     )
     parser.add_argument(
         "--model",
@@ -58,119 +70,18 @@ def main():
         "--language",
         type=str,
         default="auto",
-        choices=[
-            "auto",
-            "af",
-            "am",
-            "ar",
-            "as",
-            "az",
-            "ba",
-            "be",
-            "bg",
-            "bn",
-            "bo",
-            "br",
-            "bs",
-            "ca",
-            "cs",
-            "cy",
-            "da",
-            "de",
-            "el",
-            "en",
-            "es",
-            "et",
-            "eu",
-            "fa",
-            "fi",
-            "fo",
-            "fr",
-            "gl",
-            "gu",
-            "ha",
-            "haw",
-            "he",
-            "hi",
-            "hr",
-            "ht",
-            "hu",
-            "hy",
-            "id",
-            "is",
-            "it",
-            "ja",
-            "jw",
-            "ka",
-            "kk",
-            "km",
-            "kn",
-            "ko",
-            "la",
-            "lb",
-            "ln",
-            "lo",
-            "lt",
-            "lv",
-            "mg",
-            "mi",
-            "mk",
-            "ml",
-            "mn",
-            "mr",
-            "ms",
-            "mt",
-            "my",
-            "ne",
-            "nl",
-            "nn",
-            "no",
-            "oc",
-            "pa",
-            "pl",
-            "ps",
-            "pt",
-            "ro",
-            "ru",
-            "sa",
-            "sd",
-            "si",
-            "sk",
-            "sl",
-            "sn",
-            "so",
-            "sq",
-            "sr",
-            "su",
-            "sv",
-            "sw",
-            "ta",
-            "te",
-            "tg",
-            "th",
-            "tk",
-            "tl",
-            "tr",
-            "tt",
-            "uk",
-            "ur",
-            "uz",
-            "vi",
-            "yi",
-            "yo",
-            "zh",
-        ],
+        choices=[language_choices.choices],
         help="What is the origin language of the video? If unset, it is detected automatically.",
     )
 
-    args = parser.parse_args().__dict__
+    args: dict[str, Any] = parser.parse_args().__dict__
     model_name: str = args.pop("model")
-    output_dir: str = args.pop("output_dir")
+    output_dir: Path = Path(args.pop("output_dir"))
     output_srt: bool = args.pop("output_srt")
     srt_only: bool = args.pop("srt_only")
     language: str = args.pop("language")
 
-    os.makedirs(output_dir, exist_ok=True)
+    output_dir.mkdir(parents=True, exist_ok=True)
 
     if model_name.endswith(".en"):
         warnings.warn(
@@ -181,22 +92,23 @@ def main():
     elif language != "auto":
         args["language"] = language
 
-    model = whisper.load_model(model_name)
-    audios = get_audio(args.pop("video"))
-    subtitles = get_subtitles(
-        audios,
-        output_srt or srt_only,
-        output_dir,
-        lambda audio_path: model.transcribe(audio_path, **args),
+    model: whisper.Whisper = whisper.load_model(name=model_name)
+    audios: dict = get_audio(paths=args.pop("video"))
+    subtitles: dict = get_subtitles(
+        audio_paths=audios,
+        output_srt=output_srt or srt_only,
+        output_dir=output_dir,
+        transcribe=lambda audio_path: model.transcribe(audio=audio_path, **args),
     )
 
     if srt_only:
         return
 
     for path, srt_path in subtitles.items():
-        out_path = os.path.join(output_dir, f"{filename(path)}.mp4")
+        file: str = filename(path)
+        out_path: str = os.path.join(output_dir, f"{file}.mp4")
 
-        print(f"Adding subtitles to {filename(path)}...")
+        print(f"Adding subtitles to {file}...")
 
         video = ffmpeg.input(path)
         audio = video.audio
@@ -210,7 +122,7 @@ def main():
             audio,
             v=1,
             a=1,
-        ).output(out_path).run(quiet=True, overwrite_output=True)
+        ).output(str(out_path), quiet=True, overwrite_output=True)
 
         print(f"Saved subtitled video to {os.path.abspath(out_path)}.")
 

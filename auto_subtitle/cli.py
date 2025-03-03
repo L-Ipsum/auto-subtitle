@@ -1,37 +1,55 @@
+import logging
 import os
 import tempfile
 import warnings
+from pathlib import Path
+from typing import Any
 
 import ffmpeg
+from utils import filename, write_srt
 
-from .utils import filename, write_srt
+logger = logging.getLogger(__name__)
 
 
-def get_audio(paths):
-    temp_dir = tempfile.gettempdir()
+def get_audio(paths) -> dict[Any, Any]:
+    temp_dir: str = tempfile.gettempdir()
 
-    audio_paths = {}
+    audio_paths: dict = {}
 
     for path in paths:
-        print(f"Extracting audio from {filename(path)}...")
-        output_path = os.path.join(temp_dir, f"{filename(path)}.wav")
+        logger.info(f"Extracting audio from {filename(path)}...")
+        output_path: str = str(Path(temp_dir) / f"{filename(path)}.wav")
 
-        ffmpeg.input(path).output(output_path, acodec="pcm_s16le", ac=1, ar="16k").run(
-            quiet=True, overwrite_output=True
+        # Build ffmpeg command
+        logger.debug(f"ffmpeg {path} -acodec pcm_s16le -ac 1 -ar 16k {output_path}")
+        ffmpeg_cmd = ffmpeg.input(path).output(
+            output_path, acodec="pcm_s16le", ac=1, ar="16k"
         )
 
-        audio_paths[path] = output_path
+        # Print the command for debugging
+        logger.debug("FFmpeg command: %s", " ".join(ffmpeg_cmd.get_args()))
+
+        try:
+            ffmpeg_cmd.run(quiet=False, overwrite_output=True)  # Show error output
+            audio_paths[path] = output_path
+        except ffmpeg.Error as e:
+            logger.error(
+                "FFmpeg error:", e.stderr.decode()
+            )  # Show detailed error message
 
     return audio_paths
 
 
 def get_subtitles(
-    audio_paths: list, output_srt: bool, output_dir: str, transcribe: callable
-):
-    subtitles_path = {}
+    audio_paths: dict,
+    output_srt: bool,
+    output_dir: Path,
+    transcribe: callable,
+) -> dict:
+    subtitles_path: dict = {}
 
     for path, audio_path in audio_paths.items():
-        srt_path = output_dir if output_srt else tempfile.gettempdir()
+        srt_path: Path | str = output_dir if output_srt else tempfile.gettempdir()
         srt_path = os.path.join(srt_path, f"{filename(path)}.srt")
 
         print(f"Generating subtitles for {filename(path)}... This might take a while.")

@@ -1,4 +1,6 @@
 *.egg-info
+subtitled/
+*.wav
 
 # Byte-compiled / optimized / DLL files #
 #########################################

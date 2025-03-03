@@ -1,5 +1,8 @@
+import logging
 from pathlib import Path
 from typing import Iterator, TextIO
+
+logger = logging.getLogger(__name__)
 
 
 def str2bool(string):
@@ -41,5 +44,5 @@ def write_srt(transcript: Iterator[dict], file: TextIO):
         )
 
 
-def filename(path):
-    return Path(path).stem
+def filename(path_str: str) -> str:
+    return Path(path_str).stem
